@@ -2,7 +2,7 @@
 <html lang="id">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Formulir Pendaftaran Anggota KAWAN MKI</title>
     
     <!-- Tailwind CSS -->
@@ -44,6 +44,12 @@
     </script>
     
     <style>
+        /* Mencegah scroll horizontal yang tidak diinginkan */
+        body {
+            overflow-x: hidden;
+            -webkit-tap-highlight-color: transparent;
+        }
+
         ::-webkit-scrollbar { width: 8px; }
         ::-webkit-scrollbar-track { background: #f1f1f1; }
         ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
@@ -64,6 +70,17 @@
         #camera-preview {
             transform: scaleX(-1);
         }
+
+        /* PERBAIKAN PDF KOSONG: 
+           Gunakan ini daripada 'hidden' untuk template PDF. 
+           Ini memindahkan elemen jauh ke kiri layar agar tidak terlihat user,
+           tapi tetap bisa dibaca oleh html2pdf */
+        .off-screen-template {
+            position: fixed;
+            left: -9999px;
+            top: 0;
+            z-index: -100;
+        }
     </style>
 </head>
 <body class="bg-slate-50 text-slate-800 font-sans antialiased pb-12">
@@ -71,11 +88,12 @@
     <!-- Header Section -->
     <header class="bg-white border-b border-slate-200 shadow-sm sticky top-0 z-40">
         <div class="max-w-4xl mx-auto px-4 py-3 flex items-center justify-between">
-            <div class="flex items-center space-x-4">
-                <img src="https://lh3.googleusercontent.com/d/1GfRYHdZVEnt3WnSLJfmMKzx3HLSctPCh" alt="Logo KAWAN MKI" class="h-14 w-auto object-contain">
-                <div class="border-l pl-4 border-slate-200">
-                    <h1 class="text-xl font-extrabold text-koperasi-800 leading-tight tracking-tight uppercase">KAWAN MKI</h1>
-                    <p class="text-[10px] md:text-xs font-medium text-slate-500 tracking-wide uppercase">Koperasi Konsumen Karyawan PT Mitra Kiara Indonesia</p>
+            <div class="flex items-center space-x-3 md:space-x-4">
+                <!-- Pastikan Logo bisa diakses publik dan memiliki cross-origin yang benar jika ingin masuk PDF -->
+                <img src="https://lh3.googleusercontent.com/d/1GfRYHdZVEnt3WnSLJfmMKzx3HLSctPCh" alt="Logo KAWAN MKI" class="h-10 md:h-14 w-auto object-contain" crossorigin="anonymous">
+                <div class="border-l pl-3 md:pl-4 border-slate-200">
+                    <h1 class="text-lg md:text-xl font-extrabold text-koperasi-800 leading-tight tracking-tight uppercase">KAWAN MKI</h1>
+                    <p class="text-[9px] md:text-xs font-medium text-slate-500 tracking-wide uppercase leading-tight">Koperasi Konsumen Karyawan<br class="block md:hidden"> PT Mitra Kiara Indonesia</p>
                 </div>
             </div>
             <div class="hidden md:block text-right">
@@ -84,81 +102,88 @@
                     <i class="fa-solid fa-phone text-xs mr-1"></i> 0857-1705-0604
                 </div>
             </div>
+            <!-- Mobile Call Button (Visible only on small screens) -->
+            <div class="md:hidden">
+                <a href="tel:085717050604" class="w-9 h-9 bg-koperasi-50 text-koperasi-600 rounded-full flex items-center justify-center border border-koperasi-200">
+                    <i class="fa-solid fa-phone"></i>
+                </a>
+            </div>
         </div>
     </header>
 
-    <main class="max-w-4xl mx-auto px-4 mt-8">
+    <main class="max-w-4xl mx-auto px-4 mt-6 md:mt-8">
         
         <!-- Intro Card -->
-        <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-6 mb-6">
-            <h2 class="text-2xl font-bold text-slate-800 mb-2">Formulir Keanggotaan Baru</h2>
-            <p class="text-slate-600 mb-4">Silakan lengkapi data di bawah ini untuk menjadi bagian dari KAWAN MKI.</p>
+        <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-4 md:p-6 mb-6">
+            <h2 class="text-xl md:text-2xl font-bold text-slate-800 mb-2">Formulir Keanggotaan Baru</h2>
+            <p class="text-sm md:text-base text-slate-600 mb-4">Silakan lengkapi data di bawah ini untuk menjadi bagian dari KAWAN MKI.</p>
             
-            <div class="bg-blue-50 border-l-4 border-blue-500 p-4 rounded-r">
+            <div class="bg-blue-50 border-l-4 border-blue-500 p-3 md:p-4 rounded-r">
                 <div class="flex">
                     <div class="flex-shrink-0">
                         <i class="fa-solid fa-circle-info text-blue-500"></i>
                     </div>
-                    <div class="ml-3 text-sm text-blue-700">
+                    <div class="ml-3 text-xs md:text-sm text-blue-700">
                         Pastikan data yang diisi sudah benar sebelum mencetak bukti pendaftaran.
                     </div>
                 </div>
             </div>
         </div>
 
-        <form id="registrationForm" onsubmit="handleSubmit(event)" class="space-y-6">
+        <form id="registrationForm" onsubmit="handleSubmit(event)" class="space-y-4 md:space-y-6">
             
             <!-- Section 1: Data Pribadi -->
             <div class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
-                <div class="bg-slate-50 px-6 py-4 border-b border-slate-200 flex items-center">
-                    <div class="bg-koperasi-600 text-white w-8 h-8 rounded-full flex items-center justify-center mr-3 font-bold text-sm">1</div>
-                    <h3 class="font-semibold text-lg text-slate-800">Data Pribadi</h3>
+                <div class="bg-slate-50 px-4 md:px-6 py-3 md:py-4 border-b border-slate-200 flex items-center">
+                    <div class="bg-koperasi-600 text-white w-7 h-7 md:w-8 md:h-8 rounded-full flex items-center justify-center mr-3 font-bold text-xs md:text-sm">1</div>
+                    <h3 class="font-semibold text-base md:text-lg text-slate-800">Data Pribadi</h3>
                 </div>
-                <div class="p-6 grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div class="p-4 md:p-6 grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6">
                     <div class="col-span-1 md:col-span-2">
                         <label for="fullName" class="block text-sm font-medium text-slate-700 mb-1">Nama Lengkap (Sesuai KTP) <span class="text-red-500">*</span></label>
-                        <input type="text" id="fullName" name="fullName" required class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-koperasi-500 focus:border-koperasi-500 transition duration-200" placeholder="Nama Lengkap">
+                        <!-- Added text-base to prevent iOS zoom -->
+                        <input type="text" id="fullName" name="fullName" required class="w-full px-4 py-3 md:py-2 text-base border border-slate-300 rounded-lg focus:ring-2 focus:ring-koperasi-500 focus:border-koperasi-500 transition duration-200" placeholder="Nama Lengkap">
                     </div>
 
                     <div>
                         <label for="birthPlace" class="block text-sm font-medium text-slate-700 mb-1">Tempat Lahir <span class="text-red-500">*</span></label>
-                        <input type="text" id="birthPlace" name="birthPlace" required class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-koperasi-500 focus:border-koperasi-500 transition duration-200">
+                        <input type="text" id="birthPlace" name="birthPlace" required class="w-full px-4 py-3 md:py-2 text-base border border-slate-300 rounded-lg focus:ring-2 focus:ring-koperasi-500 focus:border-koperasi-500 transition duration-200">
                     </div>
 
                     <div>
                         <label for="birthDate" class="block text-sm font-medium text-slate-700 mb-1">Tanggal Lahir <span class="text-red-500">*</span></label>
-                        <input type="date" id="birthDate" name="birthDate" required class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-koperasi-500 focus:border-koperasi-500 transition duration-200">
+                        <input type="date" id="birthDate" name="birthDate" required class="w-full px-4 py-3 md:py-2 text-base border border-slate-300 rounded-lg focus:ring-2 focus:ring-koperasi-500 focus:border-koperasi-500 transition duration-200">
                     </div>
 
                     <div>
                         <label for="occupation" class="block text-sm font-medium text-slate-700 mb-1">Jabatan <span class="text-red-500">*</span></label>
-                        <input type="text" id="occupation" name="occupation" required class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-koperasi-500 focus:border-koperasi-500 transition duration-200" placeholder="Contoh: Staff">
+                        <input type="text" id="occupation" name="occupation" required class="w-full px-4 py-3 md:py-2 text-base border border-slate-300 rounded-lg focus:ring-2 focus:ring-koperasi-500 focus:border-koperasi-500 transition duration-200" placeholder="Contoh: Staff">
                     </div>
 
                     <div>
                         <label for="department" class="block text-sm font-medium text-slate-700 mb-1">Divisi/Departemen <span class="text-red-500">*</span></label>
-                        <input type="text" id="department" name="department" required class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-koperasi-500 focus:border-koperasi-500 transition duration-200" placeholder="Contoh: Produksi">
+                        <input type="text" id="department" name="department" required class="w-full px-4 py-3 md:py-2 text-base border border-slate-300 rounded-lg focus:ring-2 focus:ring-koperasi-500 focus:border-koperasi-500 transition duration-200" placeholder="Contoh: Produksi">
                     </div>
 
                     <div class="col-span-1 md:col-span-2">
                         <label for="address" class="block text-sm font-medium text-slate-700 mb-1">Alamat Lengkap <span class="text-red-500">*</span></label>
-                        <textarea id="address" name="address" rows="3" required class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-koperasi-500 focus:border-koperasi-500 transition duration-200"></textarea>
+                        <textarea id="address" name="address" rows="3" required class="w-full px-4 py-3 md:py-2 text-base border border-slate-300 rounded-lg focus:ring-2 focus:ring-koperasi-500 focus:border-koperasi-500 transition duration-200"></textarea>
                     </div>
                 </div>
             </div>
 
             <!-- Section 2: Kontak -->
             <div class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
-                <div class="bg-slate-50 px-6 py-4 border-b border-slate-200 flex items-center">
-                    <div class="bg-koperasi-600 text-white w-8 h-8 rounded-full flex items-center justify-center mr-3 font-bold text-sm">2</div>
-                    <h3 class="font-semibold text-lg text-slate-800">Kontak</h3>
+                <div class="bg-slate-50 px-4 md:px-6 py-3 md:py-4 border-b border-slate-200 flex items-center">
+                    <div class="bg-koperasi-600 text-white w-7 h-7 md:w-8 md:h-8 rounded-full flex items-center justify-center mr-3 font-bold text-xs md:text-sm">2</div>
+                    <h3 class="font-semibold text-base md:text-lg text-slate-800">Kontak</h3>
                 </div>
-                <div class="p-6">
+                <div class="p-4 md:p-6">
                     <div class="max-w-md">
                         <label for="phone" class="block text-sm font-medium text-slate-700 mb-1">WhatsApp/HP <span class="text-red-500">*</span></label>
                         <div class="relative">
                             <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-500 text-sm font-bold">+62</div>
-                            <input type="tel" id="phone" name="phone" required class="w-full pl-12 pr-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-koperasi-500 focus:border-koperasi-500 transition duration-200" placeholder="812xxx">
+                            <input type="tel" id="phone" name="phone" required class="w-full pl-12 pr-4 py-3 md:py-2 text-base border border-slate-300 rounded-lg focus:ring-2 focus:ring-koperasi-500 focus:border-koperasi-500 transition duration-200" placeholder="812xxx">
                         </div>
                     </div>
                 </div>
@@ -166,16 +191,16 @@
 
             <!-- Section 3: Simpanan -->
             <div class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
-                <div class="bg-slate-50 px-6 py-4 border-b border-slate-200 flex items-center">
-                    <div class="bg-koperasi-600 text-white w-8 h-8 rounded-full flex items-center justify-center mr-3 font-bold text-sm">3</div>
-                    <h3 class="font-semibold text-lg text-slate-800">Komitmen Simpanan</h3>
+                <div class="bg-slate-50 px-4 md:px-6 py-3 md:py-4 border-b border-slate-200 flex items-center">
+                    <div class="bg-koperasi-600 text-white w-7 h-7 md:w-8 md:h-8 rounded-full flex items-center justify-center mr-3 font-bold text-xs md:text-sm">3</div>
+                    <h3 class="font-semibold text-base md:text-lg text-slate-800">Komitmen Simpanan</h3>
                 </div>
-                <div class="p-6">
-                    <div class="mb-6 bg-amber-50 border border-amber-200 rounded-lg p-4 text-sm text-amber-900 leading-relaxed italic text-justify">
+                <div class="p-4 md:p-6">
+                    <div class="mb-6 bg-amber-50 border border-amber-200 rounded-lg p-3 md:p-4 text-xs md:text-sm text-amber-900 leading-relaxed italic text-justify">
                         "Dengan ini saya menyatakan bahwa saya secara sadar dan sukarela mendaftarkan diri sebagai anggota Koperasi Konsumen Karyawan Mitra Kiara Indonesia, serta memberikan kuasa dan wewenang kepada Bagian Payroll/HRD untuk melakukan pemotongan gaji saya guna pembayaran kewajiban keanggotaan dengan ketentuan sebagai berikut:"
                     </div>
 
-                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6">
                         <div class="border rounded-lg p-4 bg-slate-50">
                             <label class="block text-sm font-bold text-slate-700 mb-1">Simpanan Pokok</label>
                             <p class="text-xs text-slate-500 mb-3">(Dibayar sekali saat mendaftar)</p>
@@ -192,44 +217,45 @@
 
             <!-- Section 4: Foto & Tanda Tangan -->
             <div class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
-                <div class="bg-slate-50 px-6 py-4 border-b border-slate-200 flex items-center">
-                    <div class="bg-koperasi-600 text-white w-8 h-8 rounded-full flex items-center justify-center mr-3 font-bold text-sm">4</div>
-                    <h3 class="font-semibold text-lg text-slate-800">Verifikasi (Foto & Tanda Tangan)</h3>
+                <div class="bg-slate-50 px-4 md:px-6 py-3 md:py-4 border-b border-slate-200 flex items-center">
+                    <div class="bg-koperasi-600 text-white w-7 h-7 md:w-8 md:h-8 rounded-full flex items-center justify-center mr-3 font-bold text-xs md:text-sm">4</div>
+                    <h3 class="font-semibold text-base md:text-lg text-slate-800">Verifikasi (Foto & Tanda Tangan)</h3>
                 </div>
-                <div class="p-6 grid grid-cols-1 md:grid-cols-2 gap-8">
+                <div class="p-4 md:p-6 grid grid-cols-1 md:grid-cols-2 gap-8">
                     
                     <!-- Kamera Section -->
                     <div class="flex flex-col items-center">
                         <label class="block self-start text-sm font-medium text-slate-700 mb-2">Ambil Foto 2x3 <span class="text-red-500">*</span></label>
                         <div class="relative w-48 h-64 bg-slate-100 border-2 border-slate-300 rounded-lg overflow-hidden flex items-center justify-center">
                             <!-- Stream Kamera -->
-                            <video id="camera-stream" class="absolute inset-0 w-full h-full object-cover hidden"></video>
+                            <video id="camera-stream" class="absolute inset-0 w-full h-full object-cover hidden" playsinline autoplay muted></video>
                             <!-- Hasil Capture -->
                             <img id="captured-photo" class="absolute inset-0 w-full h-full object-cover hidden">
                             <!-- Placeholder -->
                             <i id="camera-placeholder" class="fa-solid fa-camera text-4xl text-slate-300"></i>
                         </div>
-                        <div class="mt-4 flex space-x-2">
-                            <button type="button" id="btn-start-camera" class="px-4 py-2 bg-slate-200 hover:bg-slate-300 rounded-lg text-xs font-bold transition">
-                                <i class="fa-solid fa-video mr-1"></i> Buka Kamera
+                        <div class="mt-4 flex space-x-2 w-full justify-center">
+                            <button type="button" id="btn-start-camera" class="px-4 py-3 md:py-2 bg-slate-200 hover:bg-slate-300 rounded-lg text-xs font-bold transition flex items-center">
+                                <i class="fa-solid fa-video mr-2"></i> Buka Kamera
                             </button>
-                            <button type="button" id="btn-capture" class="px-4 py-2 bg-koperasi-600 hover:bg-koperasi-700 text-white rounded-lg text-xs font-bold hidden transition">
-                                <i class="fa-solid fa-circle-dot mr-1"></i> Ambil Foto
+                            <button type="button" id="btn-capture" class="px-4 py-3 md:py-2 bg-koperasi-600 hover:bg-koperasi-700 text-white rounded-lg text-xs font-bold hidden transition flex items-center">
+                                <i class="fa-solid fa-circle-dot mr-2"></i> Ambil
                             </button>
-                            <button type="button" id="btn-retake" class="px-4 py-2 bg-red-500 hover:bg-red-600 text-white rounded-lg text-xs font-bold hidden transition">
-                                <i class="fa-solid fa-rotate-left mr-1"></i> Ulang
+                            <button type="button" id="btn-retake" class="px-4 py-3 md:py-2 bg-red-500 hover:bg-red-600 text-white rounded-lg text-xs font-bold hidden transition flex items-center">
+                                <i class="fa-solid fa-rotate-left mr-2"></i> Ulang
                             </button>
                         </div>
-                        <p class="text-[10px] text-slate-400 mt-2 italic text-center">Pastikan wajah terlihat jelas tanpa masker/kacamata hitam.</p>
+                        <p class="text-[10px] text-slate-400 mt-2 italic text-center px-4">Pastikan wajah terlihat jelas tanpa masker/kacamata hitam.</p>
                     </div>
 
                     <!-- Tanda Tangan Section -->
                     <div class="flex flex-col">
                         <label class="block text-sm font-medium text-slate-700 mb-2">Tanda Tangan Digital <span class="text-red-500">*</span></label>
                         <div class="border-2 border-slate-300 rounded-lg bg-slate-50 relative">
-                            <canvas id="signature-pad" class="w-full h-64 cursor-crosshair"></canvas>
+                            <!-- IMPORTANT for Mobile: touch-action: none prevents scrolling while signing -->
+                            <canvas id="signature-pad" class="w-full h-64 cursor-crosshair" style="touch-action: none;"></canvas>
                             <div class="absolute bottom-2 right-2 space-x-1">
-                                <button type="button" id="btn-clear-sig" class="px-3 py-1 bg-white border border-slate-300 text-[10px] font-bold rounded shadow-sm hover:bg-slate-100">
+                                <button type="button" id="btn-clear-sig" class="px-4 py-2 bg-white border border-slate-300 text-xs font-bold rounded shadow-sm hover:bg-slate-100">
                                     HAPUS
                                 </button>
                             </div>
@@ -241,7 +267,7 @@
             </div>
 
             <div class="flex flex-col md:flex-row justify-end items-center gap-4 pt-4 border-t border-slate-200">
-                <button type="submit" id="btnSubmit" class="w-full md:w-auto px-10 py-3 text-white bg-koperasi-600 hover:bg-koperasi-700 rounded-xl shadow-lg font-bold transition duration-200 flex items-center justify-center">
+                <button type="submit" id="btnSubmit" class="w-full md:w-auto px-10 py-3.5 md:py-3 text-white bg-koperasi-600 hover:bg-koperasi-700 rounded-xl shadow-lg font-bold transition duration-200 flex items-center justify-center text-base">
                     Kirim Pendaftaran <i class="fa-solid fa-paper-plane ml-2"></i>
                 </button>
             </div>
@@ -250,7 +276,7 @@
 
     <!-- Modal Success -->
     <div id="successModal" class="fixed inset-0 bg-black/60 backdrop-blur-sm hidden z-50 flex items-center justify-center p-4">
-        <div class="bg-white rounded-3xl max-w-sm w-full p-8 text-center shadow-2xl">
+        <div class="bg-white rounded-3xl max-w-sm w-full p-8 text-center shadow-2xl mx-4">
             <div class="w-20 h-20 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-6">
                 <i class="fa-solid fa-clock-rotate-left text-3xl text-blue-600"></i>
             </div>
@@ -268,12 +294,12 @@
         </div>
     </div>
 
-    <!-- Template PDF (Hidden) -->
-    <div id="pdfTemplate" class="hidden bg-white p-12 text-black relative" style="width: 210mm; font-family: 'Times New Roman', serif;">
+    <!-- Template PDF (PERBAIKAN: Gunakan class off-screen-template, BUKAN hidden) -->
+    <div id="pdfTemplate" class="off-screen-template bg-white p-12 text-black relative" style="width: 210mm; font-family: 'Times New Roman', serif;">
         <div class="pdf-watermark">KAWAN MKI</div>
         
         <div class="flex items-center justify-center border-b-4 border-double border-black pb-4 mb-8">
-            <img src="https://lh3.googleusercontent.com/d/1GfRYHdZVEnt3WnSLJfmMKzx3HLSctPCh" class="h-20 mr-4">
+            <img src="https://lh3.googleusercontent.com/d/1GfRYHdZVEnt3WnSLJfmMKzx3HLSctPCh" class="h-20 mr-4" crossorigin="anonymous">
             <div class="text-center">
                 <h1 class="text-3xl font-bold uppercase">KAWAN MKI</h1>
                 <p class="text-xs font-bold">KOPERASI KONSUMEN KARYAWAN PT MITRA KIARA INDONESIA</p>
@@ -338,8 +364,7 @@
 
     <script>
         // --- CONFIGURATION ---
-        // Ganti URL ini dengan URL Web App dari Google Apps Script Anda
-        const scriptURL = 'https://script.google.com/macros/s/AKfycbzDtQArtpF53fkAjsV373-SoNEQxC3JRgtf-hT4L__2ydB2u2T9dFumGClOPkyE70TR2w/exec';
+        const scriptURL = 'https://script.google.com/macros/s/AKfycbwkcvZ-4uJRxTyQ19xgoKtCvgDYo2ZktRzWjLQaBMVt3ibSo3SXWa6Bn3RF3eT9g6Io7g/exec';
 
         // --- Signature Pad Logic ---
         const canvas = document.getElementById('signature-pad');
@@ -353,8 +378,10 @@
             canvas.width = canvas.offsetWidth * ratio;
             canvas.height = canvas.offsetHeight * ratio;
             canvas.getContext("2d").scale(ratio, ratio);
-            signaturePad.clear();
+            signaturePad.clear(); // Hapus signature saat resize agar tidak pecah/hilang posisi
         }
+        
+        // Panggil saat load dan resize
         window.addEventListener("resize", resizeCanvas);
         resizeCanvas();
 
@@ -371,7 +398,16 @@
 
         btnStart.addEventListener('click', async () => {
             try {
-                stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "user" }, audio: false });
+                // Gunakan environment (belakang) jika user (depan) tidak tersedia/diinginkan, 
+                // tapi untuk selfie 'user' lebih tepat.
+                stream = await navigator.mediaDevices.getUserMedia({ 
+                    video: { 
+                        facingMode: "user",
+                        width: { ideal: 720 }, // Hemat bandwidth/memori di HP
+                        height: { ideal: 720 }
+                    }, 
+                    audio: false 
+                });
                 video.srcObject = stream;
                 video.play();
                 video.classList.remove('hidden');
@@ -379,7 +415,8 @@
                 btnStart.classList.add('hidden');
                 btnCapture.classList.remove('hidden');
             } catch (err) {
-                alert("Gagal mengakses kamera. Pastikan izin diberikan.");
+                alert("Gagal mengakses kamera. Pastikan izin kamera diberikan di browser Anda.");
+                console.error(err);
             }
         });
 
@@ -392,7 +429,7 @@
             ctx.scale(-1, 1);
             ctx.drawImage(video, 0, 0);
             
-            const dataUrl = canvasSnap.toDataURL('image/jpeg');
+            const dataUrl = canvasSnap.toDataURL('image/jpeg', 0.8);
             photo.src = dataUrl;
             photo.classList.remove('hidden');
             video.classList.add('hidden');
@@ -423,10 +460,14 @@
             const loadingModal = document.getElementById('loadingModal');
             const loadingText = document.getElementById('loadingText');
             loadingModal.classList.remove('hidden');
-            loadingText.textContent = "Menghubungkan ke Server...";
+            loadingText.textContent = "Menyiapkan Data...";
 
             const fullName = document.getElementById('fullName').value;
             const regNo = 'MKI-' + Date.now().toString().slice(-6);
+
+            const fotoBase64 = photo.src;
+            const ttdBase64 = signaturePad.toDataURL();
+
             const formData = {
                 regNo: regNo,
                 fullName: fullName,
@@ -435,20 +476,15 @@
                 occupation: document.getElementById('occupation').value,
                 department: document.getElementById('department').value,
                 phone: document.getElementById('phone').value,
-                address: document.getElementById('address').value
+                address: document.getElementById('address').value,
+                foto: fotoBase64,
+                tandaTangan: ttdBase64
             };
 
-            // Kirim ke Google Sheets
+            loadingText.textContent = "Mengirim ke Server...";
+
             try {
-                await fetch(scriptURL, {
-                    method: 'POST',
-                    mode: 'no-cors', // Penting untuk Apps Script
-                    cache: 'no-cache',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(formData)
-                });
-                
-                // Update UI Success
+                // Update UI PDF
                 const today = new Date().toLocaleDateString('id-ID', {day:'numeric', month:'long', year:'numeric'});
                 document.getElementById('pdfName').textContent = fullName.toUpperCase();
                 document.getElementById('pdfRegNo').textContent = regNo;
@@ -459,25 +495,35 @@
                 document.getElementById('pdfJob').textContent = formData.occupation;
                 document.getElementById('pdfDept').textContent = formData.department;
                 document.getElementById('pdfAddress').textContent = formData.address;
-                document.getElementById('pdfPhoto').src = photo.src;
-                document.getElementById('pdfSignature').src = signaturePad.toDataURL();
+                document.getElementById('pdfPhoto').src = fotoBase64;
+                document.getElementById('pdfSignature').src = ttdBase64;
 
+                await fetch(scriptURL, {
+                    method: 'POST',
+                    mode: 'no-cors',
+                    cache: 'no-cache',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(formData)
+                });
+                
                 loadingModal.classList.add('hidden');
                 document.getElementById('modalName').textContent = fullName;
                 document.getElementById('successModal').classList.remove('hidden');
 
             } catch (error) {
                 console.error('Error!', error.message);
-                alert("Terjadi kesalahan saat menyimpan data. Namun Anda tetap bisa mendownload PDF.");
+                alert("Terjadi kesalahan koneksi server. Namun Anda tetap bisa mendownload PDF.");
                 loadingModal.classList.add('hidden');
+                document.getElementById('modalName').textContent = fullName;
+                document.getElementById('successModal').classList.remove('hidden');
             }
         }
 
         function downloadPDF() {
             const element = document.getElementById('pdfTemplate');
-            element.classList.remove('hidden');
             const name = document.getElementById('fullName').value.replace(/\s+/g, '_');
             
+            // Konfigurasi PDF
             const opt = {
                 margin: 0,
                 filename: 'Pendaftaran_MKI_' + name + '.pdf',
@@ -486,9 +532,7 @@
                 jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
             };
 
-            html2pdf().set(opt).from(element).save().then(() => {
-                element.classList.add('hidden');
-            });
+            html2pdf().set(opt).from(element).save();
         }
     </script>
 </body>
