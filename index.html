@@ -26,6 +26,7 @@
                 extend: {
                     fontFamily: {
                         sans: ['Inter', 'sans-serif'],
+                        serif: ['Times New Roman', 'serif'], // Added serif for PDF
                     },
                     colors: {
                         koperasi: {
@@ -55,20 +56,47 @@
         ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
         ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
         
+        /* Watermark yang lebih halus */
         .pdf-watermark {
             position: absolute;
             top: 50%;
             left: 50%;
             transform: translate(-50%, -50%) rotate(-45deg);
-            font-size: 80px;
-            color: rgba(200, 200, 200, 0.1);
-            z-index: -1;
+            font-size: 100px;
+            font-weight: bold;
+            color: rgba(0, 0, 0, 0.03); /* Opacity sangat rendah */
+            z-index: 0;
             pointer-events: none;
             white-space: nowrap;
+            user-select: none;
         }
 
         #camera-preview {
             transform: scaleX(-1);
+        }
+
+        /* Kelas khusus untuk rendering PDF di luar layar */
+        /* Ini memastikan elemen 'ada' untuk dirender html2canvas, tapi tidak terlihat user */
+        .off-screen-render {
+            position: fixed;
+            left: -9999px;
+            top: 0;
+            width: 210mm; /* Lebar A4 */
+            z-index: -9999;
+        }
+
+        /* Style khusus tabel PDF agar border rapi */
+        .pdf-table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        .pdf-table td, .pdf-table th {
+            border: 1px solid #334155; /* slate-700 */
+            padding: 6px 10px;
+            vertical-align: top;
+        }
+        .pdf-bg-header {
+            background-color: #f1f5f9; /* slate-100 */
         }
     </style>
 </head>
@@ -78,7 +106,6 @@
     <header class="bg-white border-b border-slate-200 shadow-sm sticky top-0 z-40">
         <div class="max-w-4xl mx-auto px-4 py-3 flex items-center justify-between">
             <div class="flex items-center space-x-3 md:space-x-4">
-                <!-- Pastikan Logo bisa diakses publik dan memiliki cross-origin yang benar jika ingin masuk PDF -->
                 <img src="https://lh3.googleusercontent.com/d/1GfRYHdZVEnt3WnSLJfmMKzx3HLSctPCh" alt="Logo KAWAN MKI" class="h-10 md:h-14 w-auto object-contain" crossorigin="anonymous">
                 <div class="border-l pl-3 md:pl-4 border-slate-200">
                     <h1 class="text-lg md:text-xl font-extrabold text-koperasi-800 leading-tight tracking-tight uppercase">KAWAN MKI</h1>
@@ -91,7 +118,7 @@
                     <i class="fa-solid fa-phone text-xs mr-1"></i> 0857-1705-0604
                 </div>
             </div>
-            <!-- Mobile Call Button (Visible only on small screens) -->
+            <!-- Mobile Call Button -->
             <div class="md:hidden">
                 <a href="tel:085717050604" class="w-9 h-9 bg-koperasi-50 text-koperasi-600 rounded-full flex items-center justify-center border border-koperasi-200">
                     <i class="fa-solid fa-phone"></i>
@@ -130,7 +157,6 @@
                 <div class="p-4 md:p-6 grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6">
                     <div class="col-span-1 md:col-span-2">
                         <label for="fullName" class="block text-sm font-medium text-slate-700 mb-1">Nama Lengkap (Sesuai KTP) <span class="text-red-500">*</span></label>
-                        <!-- Added text-base to prevent iOS zoom -->
                         <input type="text" id="fullName" name="fullName" required class="w-full px-4 py-3 md:py-2 text-base border border-slate-300 rounded-lg focus:ring-2 focus:ring-koperasi-500 focus:border-koperasi-500 transition duration-200" placeholder="Nama Lengkap">
                     </div>
 
@@ -241,7 +267,6 @@
                     <div class="flex flex-col">
                         <label class="block text-sm font-medium text-slate-700 mb-2">Tanda Tangan Digital <span class="text-red-500">*</span></label>
                         <div class="border-2 border-slate-300 rounded-lg bg-slate-50 relative">
-                            <!-- IMPORTANT for Mobile: touch-action: none prevents scrolling while signing -->
                             <canvas id="signature-pad" class="w-full h-64 cursor-crosshair" style="touch-action: none;"></canvas>
                             <div class="absolute bottom-2 right-2 space-x-1">
                                 <button type="button" id="btn-clear-sig" class="px-4 py-2 bg-white border border-slate-300 text-xs font-bold rounded shadow-sm hover:bg-slate-100">
@@ -270,76 +295,138 @@
                 <i class="fa-solid fa-clock-rotate-left text-3xl text-blue-600"></i>
             </div>
             <h3 class="text-2xl font-bold text-slate-800 mb-2">Pendaftaran Diajukan!</h3>
-            <p class="text-slate-500 mb-8 text-sm leading-relaxed">Pendaftaran anda atas nama <span id="modalName" class="font-bold text-slate-700"></span> telah kami ajukan, mohon tunggu persetujuan dari admin.</p>
+            <p class="text-slate-500 mb-8 text-sm leading-relaxed">Pendaftaran anda atas nama <span id="modalName" class="font-bold text-slate-700"></span> telah kami ajukan.</p>
             
             <div class="flex flex-col space-y-3">
-                <button onclick="downloadPDF()" class="w-full bg-blue-600 text-white py-3.5 rounded-xl font-bold hover:bg-blue-700 transition flex items-center justify-center">
-                    <i class="fa-solid fa-file-pdf mr-2"></i> Download Bukti PDF
-                </button>
-                <button onclick="location.reload()" class="w-full text-slate-400 py-2 rounded-xl text-sm font-medium hover:text-slate-600">
+                <!-- Tombol Download PDF Dihapus -->
+                <button onclick="location.reload()" class="w-full bg-blue-600 text-white py-3.5 rounded-xl font-bold hover:bg-blue-700 transition flex items-center justify-center shadow-lg shadow-blue-600/30">
                     Selesai
                 </button>
             </div>
         </div>
     </div>
 
-    <!-- Template PDF (Hidden Default) -->
-    <!-- PERBAIKAN: Menggunakan display:none, akan dimunculkan via JS saat download -->
-    <div id="pdfTemplate" class="hidden bg-white p-12 text-black" style="width: 210mm; font-family: 'Times New Roman', serif;">
-        <div class="pdf-watermark">KAWAN MKI</div>
-        
-        <div class="flex items-center justify-center border-b-4 border-double border-black pb-4 mb-8">
-            <img src="https://lh3.googleusercontent.com/d/1GfRYHdZVEnt3WnSLJfmMKzx3HLSctPCh" class="h-20 mr-4" crossorigin="anonymous">
-            <div class="text-center">
-                <h1 class="text-3xl font-bold uppercase">KAWAN MKI</h1>
-                <p class="text-xs font-bold">KOPERASI KONSUMEN KARYAWAN PT MITRA KIARA INDONESIA</p>
-                <p class="text-[10px] italic">Badan Hukum No: 123.456/BH/2026</p>
+    <!-- PDF TEMPLATE CONTAINER (OFF SCREEN) -->
+    <!-- Menggunakan hidden secara default, akan diubah classnya saat download -->
+    <div id="pdf-container" class="hidden">
+        <div id="pdfTemplate" class="bg-white relative text-black font-serif" style="width: 210mm; min-height: 297mm; padding: 10mm;">
+            <!-- Watermark -->
+            <div class="pdf-watermark">KAWAN MKI</div>
+            
+            <!-- PDF Header -->
+            <div class="flex items-center justify-between border-b-2 border-black pb-2 mb-4">
+                <div class="flex items-center">
+                    <img src="https://lh3.googleusercontent.com/d/1GfRYHdZVEnt3WnSLJfmMKzx3HLSctPCh" class="h-20 mr-4" crossorigin="anonymous">
+                    <div>
+                        <h1 class="text-2xl font-bold text-green-800 uppercase leading-none">KAWAN MKI</h1>
+                        <p class="text-xs font-bold uppercase tracking-wide">Koperasi Konsumen Karyawan</p>
+                        <p class="text-xs font-bold uppercase tracking-wide">PT Mitra Kiara Indonesia</p>
+                    </div>
+                </div>
+                <div class="text-right">
+                    <h2 class="text-xl font-bold border-2 border-black px-4 py-1 inline-block uppercase">Bukti Pendaftaran</h2>
+                    <p class="text-xs mt-1">No: <span id="pdfRegNo" class="font-mono font-bold"></span></p>
+                </div>
             </div>
-        </div>
 
-        <h2 class="text-center font-bold text-xl underline mb-8">BUKTI PENDAFTARAN ANGGOTA</h2>
+            <!-- PDF Body: Flex Row for Bio & Photo -->
+            <div class="flex justify-between items-start mb-6 gap-6">
+                <!-- Tabel Biodata (Grid Style) -->
+                <div class="flex-1">
+                    <h3 class="font-bold text-sm bg-gray-200 border border-black border-b-0 px-2 py-1 uppercase">I. Data Anggota</h3>
+                    <table class="pdf-table text-sm w-full">
+                        <tr>
+                            <td class="w-32 bg-gray-50 font-semibold">Nama Lengkap</td>
+                            <td id="pdfName" class="font-bold uppercase"></td>
+                        </tr>
+                        <tr>
+                            <td class="bg-gray-50 font-semibold">TTL</td>
+                            <td id="pdfTtl"></td>
+                        </tr>
+                        <tr>
+                            <td class="bg-gray-50 font-semibold">Jabatan</td>
+                            <td id="pdfJob"></td>
+                        </tr>
+                        <tr>
+                            <td class="bg-gray-50 font-semibold">Departemen</td>
+                            <td id="pdfDept"></td>
+                        </tr>
+                        <tr>
+                            <td class="bg-gray-50 font-semibold">Alamat</td>
+                            <td id="pdfAddress"></td>
+                        </tr>
+                        <tr>
+                            <td class="bg-gray-50 font-semibold">Tanggal Daftar</td>
+                            <td id="pdfDate"></td>
+                        </tr>
+                    </table>
+                </div>
 
-        <div class="mb-10 flex justify-between items-start">
-            <div class="w-2/3">
-                <table class="w-full text-sm">
-                    <tr><td class="py-2 w-1/3 font-bold">No. Registrasi</td><td>: <span id="pdfRegNo" class="font-bold"></span></td></tr>
-                    <tr><td class="py-2 font-bold">Tanggal Daftar</td><td>: <span id="pdfDate"></span></td></tr>
+                <!-- Foto Pas -->
+                <div class="w-32 flex-shrink-0">
+                    <div class="w-32 h-40 border-2 border-black p-1 bg-white shadow-sm">
+                        <img id="pdfPhoto" class="w-full h-full object-cover border border-gray-300">
+                    </div>
+                    <p class="text-[10px] text-center mt-1 text-gray-500">Foto Anggota</p>
+                </div>
+            </div>
+
+            <!-- Pernyataan & Iuran -->
+            <div class="mb-8">
+                <h3 class="font-bold text-sm bg-gray-200 border border-black border-b-0 px-2 py-1 uppercase">II. Pernyataan & Rincian Iuran</h3>
+                <div class="border border-black p-4 text-sm text-justify mb-4 bg-gray-50">
+                    <p class="italic">"Dengan ini saya menyatakan mendaftarkan diri sebagai anggota Koperasi Konsumen Karyawan Mitra Kiara Indonesia dan bersedia mematuhi segala ketentuan yang berlaku, termasuk pemotongan gaji untuk iuran wajib dan pokok."</p>
+                </div>
+
+                <table class="pdf-table text-sm w-full">
+                    <thead>
+                        <tr class="bg-gray-100 text-center">
+                            <th class="w-10">No</th>
+                            <th>Jenis Simpanan</th>
+                            <th>Keterangan</th>
+                            <th class="w-32">Nominal</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td class="text-center">1</td>
+                            <td class="font-bold">Simpanan Pokok</td>
+                            <td>Dibayarkan satu kali diawal pendaftaran</td>
+                            <td class="text-right font-bold">Rp 200.000</td>
+                        </tr>
+                        <tr>
+                            <td class="text-center">2</td>
+                            <td class="font-bold">Simpanan Wajib</td>
+                            <td>Potongan rutin setiap bulan</td>
+                            <td class="text-right font-bold">Rp 100.000</td>
+                        </tr>
+                        <tr class="bg-gray-100 font-bold">
+                            <td colspan="3" class="text-right">Total Kewajiban Awal</td>
+                            <td class="text-right">Rp 300.000</td>
+                        </tr>
+                    </tbody>
                 </table>
             </div>
-            <div class="w-24 h-32 border border-black overflow-hidden bg-gray-50 flex items-center justify-center">
-                <img id="pdfPhoto" class="w-full h-full object-cover">
-            </div>
-        </div>
 
-        <h3 class="font-bold bg-gray-100 border px-2 py-1 mb-4 text-md uppercase">I. Data Anggota</h3>
-        <table class="w-full text-sm mb-6 ml-4">
-            <tr><td class="py-1 w-1/4">Nama Lengkap</td><td>: <span id="pdfName" class="font-bold"></span></td></tr>
-            <tr><td class="py-1">Tempat, Tgl Lahir</td><td>: <span id="pdfTtl"></span></td></tr>
-            <tr><td class="py-1">Jabatan</td><td>: <span id="pdfJob"></span></td></tr>
-            <tr><td class="py-1">Divisi/Dept.</td><td>: <span id="pdfDept"></span></td></tr>
-            <tr><td class="py-1">Alamat</td><td>: <span id="pdfAddress"></span></td></tr>
-        </table>
-
-        <h3 class="font-bold bg-gray-100 border px-2 py-1 mb-4 text-md uppercase">II. Pernyataan & Rincian Iuran</h3>
-        <p class="text-[11px] mb-4 text-justify px-4 italic leading-tight">
-            "Dengan ini saya menyatakan bahwa saya secara sadar dan sukarela mendaftarkan diri sebagai anggota Koperasi Konsumen Karyawan Mitra Kiara Indonesia, serta memberikan kuasa dan wewenang kepada Bagian Payroll/HRD untuk melakukan pemotongan gaji saya guna pembayaran kewajiban keanggotaan dengan ketentuan sebagai berikut:"
-        </p>
-        <table class="w-full text-sm mb-12 ml-4">
-            <tr><td class="py-1 w-1/4">Simpanan Pokok</td><td>: Rp 200.000,-</td></tr>
-            <tr><td class="py-1">Simpanan Wajib</td><td>: Rp 100.000,- / Bulan</td></tr>
-        </table>
-
-        <div class="flex justify-between items-end mt-12">
-            <div class="text-center w-40">
-                <p class="text-xs mb-2">Anggota,</p>
-                <div class="h-24 w-full flex items-center justify-center mb-2 overflow-hidden border border-gray-100 rounded">
-                    <img id="pdfSignature" class="max-h-full max-w-full object-contain">
+            <!-- Footer TTD -->
+            <div class="flex justify-between items-end mt-12 px-4">
+                <div class="text-center w-48">
+                    <p class="text-sm mb-2">Mengetahui,<br>Pengurus KAWAN MKI</p>
+                    <div class="h-20 w-full mb-2"></div> <!-- Space for stamp -->
+                    <p class="font-bold text-sm border-t border-black pt-1">ADMINISTRASI</p>
                 </div>
-                <p class="font-bold border-t border-black pt-1">( <span id="pdfSignName"></span> )</p>
+
+                <div class="text-center w-48">
+                    <p class="text-sm mb-2">Jakarta, <span id="pdfDateFooter"></span><br>Hormat Saya,</p>
+                    <div class="h-24 w-full flex items-center justify-center mb-1">
+                        <img id="pdfSignature" class="max-h-full max-w-full object-contain">
+                    </div>
+                    <p class="font-bold text-sm border-t border-black pt-1 uppercase">( <span id="pdfSignName"></span> )</p>
+                </div>
             </div>
-            <div class="text-center w-60">
-                <p class="text-xs mb-20">Jakarta, <span id="pdfDateFooter"></span><br>Admin KAWAN MKI,</p>
-                <p class="font-bold border-t border-black pt-1">SISTEM KOPERASI</p>
+            
+            <div class="absolute bottom-4 left-10 right-10 text-center border-t border-gray-300 pt-2">
+                <p class="text-[10px] text-gray-400">Dokumen ini diterbitkan secara digital oleh Sistem KAWAN MKI pada <span id="pdfTimestamp"></span></p>
             </div>
         </div>
     </div>
@@ -388,8 +475,6 @@
 
         btnStart.addEventListener('click', async () => {
             try {
-                // Gunakan environment (belakang) jika user (depan) tidak tersedia/diinginkan, 
-                // tapi untuk selfie 'user' lebih tepat.
                 stream = await navigator.mediaDevices.getUserMedia({ 
                     video: { 
                         facingMode: "user",
@@ -419,7 +504,7 @@
             ctx.scale(-1, 1);
             ctx.drawImage(video, 0, 0);
             
-            // PERBAIKAN: Kompres lebih tinggi (0.6) agar payload tidak terlalu besar untuk Google Sheets
+            // Kompres 0.6
             const dataUrl = canvasSnap.toDataURL('image/jpeg', 0.6);
             photo.src = dataUrl;
             photo.classList.remove('hidden');
@@ -475,19 +560,52 @@
             loadingText.textContent = "Mengirim ke Server...";
 
             try {
-                // Update UI PDF
+                // Populate PDF Data Here
                 const today = new Date().toLocaleDateString('id-ID', {day:'numeric', month:'long', year:'numeric'});
-                document.getElementById('pdfName').textContent = fullName.toUpperCase();
+                document.getElementById('pdfName').textContent = fullName;
                 document.getElementById('pdfRegNo').textContent = regNo;
                 document.getElementById('pdfDate').textContent = today;
                 document.getElementById('pdfDateFooter').textContent = today;
-                document.getElementById('pdfSignName').textContent = fullName.toUpperCase();
-                document.getElementById('pdfTtl').textContent = formData.birthPlace + ", " + formData.birthDate;
+                document.getElementById('pdfTimestamp').textContent = new Date().toLocaleString('id-ID');
+                document.getElementById('pdfSignName').textContent = fullName;
+                
+                // Format TTL
+                const bDate = new Date(formData.birthDate).toLocaleDateString('id-ID', {day:'numeric', month:'long', year:'numeric'});
+                document.getElementById('pdfTtl').textContent = formData.birthPlace + ", " + bDate;
+                
                 document.getElementById('pdfJob').textContent = formData.occupation;
                 document.getElementById('pdfDept').textContent = formData.department;
                 document.getElementById('pdfAddress').textContent = formData.address;
                 document.getElementById('pdfPhoto').src = fotoBase64;
                 document.getElementById('pdfSignature').src = ttdBase64;
+
+                // --- KIRIM NOTIFIKASI WHATSAPP KE GROUP ---
+                const waMessage = `*🔔 NOTIFIKASI PENDAFTARAN BARU*\n\n` +
+                    `Kepada Admin KAWAN MKI,\n` +
+                    `Telah masuk pendaftaran anggota baru dengan rincian:\n\n` +
+                    `👤 *Nama*: ${fullName}\n` +
+                    `🔢 *No. Reg*: ${regNo}\n` +
+                    `🏢 *Divisi*: ${formData.department}\n` +
+                    `💼 *Jabatan*: ${formData.occupation}\n` +
+                    `📞 *No. HP*: ${formData.phone}\n\n` +
+                    `Mohon segera dicek dan diproses. Terima kasih.`;
+
+                const waFormData = new FormData();
+                waFormData.append('target', '120363350453422401@g.us');
+                waFormData.append('message', waMessage);
+
+                // Kirim WA secara asynchronous (tidak menunggu selesai agar UI tetap responsif)
+                fetch('https://api.fonnte.com/send', {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': 'T9SCfr4hZSmGEy8ngizJ'
+                    },
+                    body: waFormData
+                })
+                .then(response => response.json())
+                .then(data => console.log('WA Sent:', data))
+                .catch(error => console.error('WA Error:', error));
+                // ------------------------------------------
 
                 await fetch(scriptURL, {
                     method: 'POST',
@@ -511,32 +629,46 @@
         }
 
         function downloadPDF() {
+            const container = document.getElementById('pdf-container');
             const element = document.getElementById('pdfTemplate');
             const name = document.getElementById('fullName').value.replace(/\s+/g, '_');
-            
-            // PERBAIKAN: Tampilkan elemen sebentar agar html2pdf bisa membacanya
-            element.classList.remove('hidden');
-            // Pastikan dia berada di atas segalanya dan terlihat
-            element.style.position = 'absolute';
-            element.style.top = '0';
-            element.style.left = '0';
-            element.style.zIndex = '9999';
-            element.style.display = 'block';
+            const loadingModal = document.getElementById('loadingModal');
+            const loadingText = document.getElementById('loadingText');
 
-            // Konfigurasi PDF
-            const opt = {
-                margin: 0,
-                filename: 'Pendaftaran_MKI_' + name + '.pdf',
-                image: { type: 'jpeg', quality: 0.98 },
-                html2canvas: { scale: 2, useCORS: true, logging: false },
-                jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
-            };
+            // Show loading
+            loadingModal.classList.remove('hidden');
+            loadingText.textContent = "Membuat PDF...";
 
-            html2pdf().set(opt).from(element).save().then(() => {
-                // Sembunyikan lagi setelah selesai
-                element.style.display = 'none';
-                element.classList.add('hidden');
-            });
+            // STRATEGI BARU: 
+            // 1. Hapus class 'hidden' dari container
+            // 2. Tambahkan class 'off-screen-render' agar dia dirender browser tapi di koordinat -9999px
+            container.classList.remove('hidden');
+            container.classList.add('off-screen-render');
+
+            // Timeout penting: memberi waktu browser me-render gambar (foto & ttd) ke dalam DOM
+            // sebelum html2pdf mengambil screenshotnya.
+            setTimeout(() => {
+                const opt = {
+                    margin: 0,
+                    filename: 'Pendaftaran_MKI_' + name + '.pdf',
+                    image: { type: 'jpeg', quality: 0.98 },
+                    html2canvas: { scale: 2, useCORS: true, logging: false },
+                    jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
+                };
+
+                html2pdf().set(opt).from(element).save().then(() => {
+                    // Kembalikan ke state awal (hidden)
+                    container.classList.remove('off-screen-render');
+                    container.classList.add('hidden');
+                    loadingModal.classList.add('hidden');
+                }).catch(err => {
+                    console.error(err);
+                    alert("Gagal generate PDF");
+                    loadingModal.classList.add('hidden');
+                    container.classList.remove('off-screen-render');
+                    container.classList.add('hidden');
+                });
+            }, 500); // Jeda 500ms
         }
     </script>
 </body>
