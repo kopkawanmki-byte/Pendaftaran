@@ -70,17 +70,6 @@
         #camera-preview {
             transform: scaleX(-1);
         }
-
-        /* PERBAIKAN PDF KOSONG: 
-           Gunakan ini daripada 'hidden' untuk template PDF. 
-           Ini memindahkan elemen jauh ke kiri layar agar tidak terlihat user,
-           tapi tetap bisa dibaca oleh html2pdf */
-        .off-screen-template {
-            position: fixed;
-            left: -9999px;
-            top: 0;
-            z-index: -100;
-        }
     </style>
 </head>
 <body class="bg-slate-50 text-slate-800 font-sans antialiased pb-12">
@@ -294,8 +283,9 @@
         </div>
     </div>
 
-    <!-- Template PDF (PERBAIKAN: Gunakan class off-screen-template, BUKAN hidden) -->
-    <div id="pdfTemplate" class="off-screen-template bg-white p-12 text-black relative" style="width: 210mm; font-family: 'Times New Roman', serif;">
+    <!-- Template PDF (Hidden Default) -->
+    <!-- PERBAIKAN: Menggunakan display:none, akan dimunculkan via JS saat download -->
+    <div id="pdfTemplate" class="hidden bg-white p-12 text-black" style="width: 210mm; font-family: 'Times New Roman', serif;">
         <div class="pdf-watermark">KAWAN MKI</div>
         
         <div class="flex items-center justify-center border-b-4 border-double border-black pb-4 mb-8">
@@ -429,7 +419,8 @@
             ctx.scale(-1, 1);
             ctx.drawImage(video, 0, 0);
             
-            const dataUrl = canvasSnap.toDataURL('image/jpeg', 0.8);
+            // PERBAIKAN: Kompres lebih tinggi (0.6) agar payload tidak terlalu besar untuk Google Sheets
+            const dataUrl = canvasSnap.toDataURL('image/jpeg', 0.6);
             photo.src = dataUrl;
             photo.classList.remove('hidden');
             video.classList.add('hidden');
@@ -523,6 +514,15 @@
             const element = document.getElementById('pdfTemplate');
             const name = document.getElementById('fullName').value.replace(/\s+/g, '_');
             
+            // PERBAIKAN: Tampilkan elemen sebentar agar html2pdf bisa membacanya
+            element.classList.remove('hidden');
+            // Pastikan dia berada di atas segalanya dan terlihat
+            element.style.position = 'absolute';
+            element.style.top = '0';
+            element.style.left = '0';
+            element.style.zIndex = '9999';
+            element.style.display = 'block';
+
             // Konfigurasi PDF
             const opt = {
                 margin: 0,
@@ -532,7 +532,11 @@
                 jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
             };
 
-            html2pdf().set(opt).from(element).save();
+            html2pdf().set(opt).from(element).save().then(() => {
+                // Sembunyikan lagi setelah selesai
+                element.style.display = 'none';
+                element.classList.add('hidden');
+            });
         }
     </script>
 </body>
